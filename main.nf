@@ -137,7 +137,7 @@ workflow {
         .out
         .bam
         .map { sample_id, bam, bai -> [sample_id, bam, bai] }
-        .collect(flatten: false)
+        .collect(flat: false)
 
     samplesheet_content =
         samplesheet_rows.map { rows ->
