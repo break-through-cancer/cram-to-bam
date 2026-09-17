@@ -75,18 +75,19 @@ process WRITE_SAMPLESHEET {
     maxRetries 2
 
     input:
-    val rows  // list of [sample_id, bam_path, bai_path] triples, one per sample
+    val csv_content
 
     output:
     path "samplesheet.csv", emit: samplesheet
 
-    exec:
-    def lines = ["sample,file"]
-    rows.each { sample_id, bam, bai ->
-        lines << "${sample_id},${params.outdir}/${sample_id}/${sample_id}.bam"
-        lines << "${sample_id},${params.outdir}/${sample_id}/${sample_id}.bam.bai"
-    }
-    task.workDir.resolve("samplesheet.csv").text = lines.join("\n") + "\n"
+    shell:
+    '''
+    cat > samplesheet.csv << 'CSV_EOF'
+!{csv_content}
+CSV_EOF
+
+    test -s samplesheet.csv
+    '''
 }
 
 // ---------------------------------------------------------------------------
@@ -132,11 +133,21 @@ workflow {
     // -----------------------------------------------------------------------
 
     samplesheet_rows =
-        CRAM_TO_BAM
-            .out
-            .bam
-            .map { sample_id, bam, bai -> [sample_id, bam, bai] }
-            .collect()
+    CRAM_TO_BAM
+        .out
+        .bam
+        .map { sample_id, bam, bai -> [sample_id, bam, bai] }
+        .collect(flatten: false)
 
-    WRITE_SAMPLESHEET(samplesheet_rows)
+    samplesheet_content =
+        samplesheet_rows.map { rows ->
+            def lines = ["sample,file"]
+            rows.each { sample_id, bam, bai ->
+                lines << "${sample_id},${params.outdir}/${sample_id}/${sample_id}.bam"
+                lines << "${sample_id},${params.outdir}/${sample_id}/${sample_id}.bam.bai"
+            }
+            lines.join("\n")
+        }
+
+    WRITE_SAMPLESHEET(samplesheet_content)
 }
