@@ -1,0 +1,8 @@
+{
+  "read_from_cache": true,
+  "write_to_cache": true,
+  "outdir": "$.params.dataset.s3|/data/",
+  "ref": "$.dataset.params.ref",
+  "ref_fasta": "$.dataset.params.ref_fasta",
+  "ref_fai": "$.dataset.params.ref_fai"
+}

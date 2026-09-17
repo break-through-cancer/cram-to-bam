@@ -1,0 +1,42 @@
+{
+  "form": {
+    "title": "CRAM to BAM Conversion",
+    "type": "object",
+    "properties": {
+      "ref": {
+        "title": "Reference genome",
+        "description": "Reference genome build. The selected build must match the FASTA/index and the CRAM's compression reference exactly.",
+        "type": "string",
+        "enum": [
+          "hg38",
+          "hg19"
+        ],
+        "default": "hg38"
+      },
+      "ref_fasta": {
+        "title": "Reference FASTA",
+        "description": "Reference genome FASTA used to decompress the CRAM. Must be the exact reference the CRAM was compressed against.",
+        "type": "string",
+        "multiple": false,
+        "pathType": "reference",
+        "file": "**/*",
+        "default": "s3://broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
+      },
+      "ref_fai": {
+        "title": "Reference FASTA index",
+        "description": "FAI index corresponding to the reference FASTA.",
+        "type": "string",
+        "multiple": false,
+        "pathType": "reference",
+        "file": "**/*",
+        "default": "s3://broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai"
+      }
+    },
+    "required": [
+      "ref",
+      "ref_fasta",
+      "ref_fai"
+    ]
+  },
+  "ui": {}
+}
