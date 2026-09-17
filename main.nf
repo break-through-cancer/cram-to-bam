@@ -7,7 +7,8 @@
  * unlike BAM, which is self-contained. samtools view handles the
  * decompression and format conversion in one step.
  *
- * Input: a CSV samplesheet with columns: sample_id,cram,crai
+ * Input: params.cram_runs, injected by preprocess.py from the Cirro
+ * dataset's file listing -- NOT a user-supplied samplesheet.
  * Output: <outdir>/<sample_id>/<sample_id>.bam (+ .bam.bai)
  *         <outdir>/samplesheet.csv -- columns: sample,file
  *         (one row per BAM, one row per BAI, so each sample_id appears twice)
@@ -19,7 +20,6 @@ nextflow.enable.dsl = 2
 // ---------------------------------------------------------------------------
 
 if (!params.containsKey('outdir'))     params.outdir = 'results'
-if (!params.containsKey('input'))      params.input = null
 if (!params.containsKey('ref_fasta'))  params.ref_fasta = null
 if (!params.containsKey('ref_fai'))    params.ref_fai = null
 
@@ -69,7 +69,7 @@ process CRAM_TO_BAM {
 process WRITE_SAMPLESHEET {
     tag "samplesheet"
     label 'process_low'
-    container "quay.io/biocontainers/samtools:1.20--h50ea8bc_0"  // no real tool dependency here, just a shell -- reusing this image avoids pulling a third one
+    container "quay.io/biocontainers/samtools:1.20--h50ea8bc_0"
     publishDir "${params.outdir}", mode: 'copy'
     errorStrategy 'retry'
     maxRetries 2
@@ -95,8 +95,8 @@ process WRITE_SAMPLESHEET {
 
 workflow {
 
-    if (!params.input) {
-        error "Missing required param: input (path to samplesheet CSV with columns: sample_id,cram,crai)"
+    if (!params.cram_runs) {
+        error "params.cram_runs is empty -- did the Cirro preprocess.py hook run? (see preprocess.py)"
     }
     if (!params.ref_fasta) {
         error "Missing required param: ref_fasta"
@@ -110,13 +110,12 @@ workflow {
 
     samples_ch =
         Channel
-            .fromPath(params.input, checkIfExists: true)
-            .splitCsv(header: true)
-            .map { row ->
+            .fromList(params.cram_runs)
+            .map { run ->
                 tuple(
-                    row.sample_id,
-                    file(row.cram, checkIfExists: true),
-                    file(row.crai, checkIfExists: true)
+                    run.sample_id,
+                    file(run.cram, checkIfExists: true),
+                    file(run.crai, checkIfExists: true)
                 )
             }
 
