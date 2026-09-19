@@ -10,7 +10,7 @@ those must be excluded.
 import json
 from cirro.helpers.preprocess_dataset import PreprocessDataset
 
-RECAL_FOLDER_PATTERN = r"/recalibrated/"
+RECAL_FOLDER_PATTERN = r"/markduplicates/"
 
 
 def extract_crams(ds):
