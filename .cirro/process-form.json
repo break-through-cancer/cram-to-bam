@@ -3,6 +3,12 @@
     "title": "CRAM to BAM Conversion",
     "type": "object",
     "properties": {
+      "cram_folder": {
+        "title": "CRAM folder (optional)",
+        "description": "Folder, relative to the dataset's data/ root, containing the CRAMs (e.g. preprocessing/recalibrated). Leave blank to search the whole dataset.",
+        "type": "string",
+        "default": ""
+      },
       "ref": {
         "title": "Reference genome",
         "description": "Reference genome build. The selected build must match the FASTA/index and the CRAM's compression reference exactly.",
