@@ -3,26 +3,31 @@ preprocess.py -- Cirro dataset preprocessing hook for the CRAM-to-BAM
 conversion pipeline. Mirrors the MuTect1 pipeline's preprocess.py pattern:
 injects params.cram_runs directly, no samplesheet CSV involved.
 
-Only CRAMs living under a 'recalibrated/' folder are considered -- datasets
-may contain CRAMs from earlier, non-recalibrated pipeline stages too, and
-those must be excluded.
+Every .cram / .cram.crai in the dataset is considered. If the user supplies
+the optional 'cram_folder' parameter, only files under that folder (relative
+to the dataset's data/ root) are used; otherwise the whole dataset is searched.
 """
 import json
 from cirro.helpers.preprocess_dataset import PreprocessDataset
 
-RECAL_FOLDER_PATTERN = r"/markduplicates/"
+
+def relative_path(uri):
+    """Path of a file relative to the dataset's data/ root."""
+    marker = "/data/"
+    idx = uri.find(marker)
+    return uri[idx + len(marker):] if idx != -1 else uri
 
 
-def extract_crams(ds):
+def extract_crams(ds, cram_folder=""):
     df = ds.files.copy()
     df["file"] = df["file"].astype(str)
 
-    # Restrict to the recalibrated folder BEFORE anything else -- this is
-    # the filter that keeps this dataset's output limited to the CRAMs we
-    # actually want, even if other pipeline stages' CRAMs are also present.
-    df = df[df["file"].str.contains(RECAL_FOLDER_PATTERN, regex=True)]
-
     df = df[df["file"].str.endswith(".cram") | df["file"].str.endswith(".cram.crai")]
+
+    folder = (cram_folder or "").strip().strip("/")
+    if folder:
+        prefix = folder + "/"
+        df = df[df["file"].map(lambda f: relative_path(f).startswith(prefix))]
 
     cram_map = {}
 
@@ -34,8 +39,9 @@ def extract_crams(ds):
             if f.endswith(".cram") and not f.endswith(".cram.crai"):
                 if cram:
                     raise ValueError(
-                        f"Multiple recalibrated CRAMs found for sample {sample!r}: "
-                        f"{cram!r} and {f!r} -- expected exactly one."
+                        f"Multiple CRAMs found for sample {sample!r}: "
+                        f"{cram!r} and {f!r} -- expected exactly one. "
+                        "Use the 'cram_folder' parameter to narrow the search."
                     )
                 cram = f
             elif f.endswith(".cram.crai"):
@@ -45,9 +51,8 @@ def extract_crams(ds):
             cram_map[str(sample)] = {"cram": cram, "crai": crai}
 
     if not cram_map:
-        raise ValueError(
-            f"No CRAMs found under a folder matching {RECAL_FOLDER_PATTERN!r} in this dataset"
-        )
+        where = f"under folder {folder!r}" if folder else "anywhere"
+        raise ValueError(f"No CRAMs found {where} in this dataset")
 
     return cram_map
 
@@ -58,7 +63,9 @@ def main():
     print("=== ds.files preview ===")
     print(ds.files.head(20).to_string(index=False))
 
-    cram_map = extract_crams(ds)
+    cram_folder = ds.params.get("cram_folder", "")
+    print(f"cram_folder: {cram_folder!r}")
+    cram_map = extract_crams(ds, cram_folder)
 
     cram_runs = []
     for sample, files in cram_map.items():
