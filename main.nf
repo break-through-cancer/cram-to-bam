@@ -23,6 +23,14 @@ if (!params.containsKey('outdir'))     params.outdir = 'results'
 if (!params.containsKey('ref_fasta'))  params.ref_fasta = null
 if (!params.containsKey('ref_fai'))    params.ref_fai = null
 
+// Cirro's own "$.params.dataset.s3|/data/" process-input.json template (the org-wide
+// convention for outdir -- see e.g. deepsomatic, recalibrate-bam-cram, mutect-1) always
+// supplies outdir WITH a trailing slash; the local default above does not. Every
+// publishDir below assumes neither, joining with its own "/" -- normalize once here so
+// "${params.outdir}/${sample_id}" never produces a doubled slash regardless of which
+// outdir value is in play.
+params.outdir = params.outdir.replaceAll('/+$', '')
+
 // ---------------------------------------------------------------------------
 // PROCESSES
 // ---------------------------------------------------------------------------
