@@ -23,12 +23,21 @@ if (!params.containsKey('outdir'))     params.outdir = 'results'
 if (!params.containsKey('ref_fasta'))  params.ref_fasta = null
 if (!params.containsKey('ref_fai'))    params.ref_fai = null
 
-// Cirro's own "$.params.dataset.s3|/data/" process-input.json template (the org-wide
-// convention for outdir -- see e.g. deepsomatic, recalibrate-bam-cram, mutect-1) always
-// supplies outdir WITH a trailing slash; the local default above does not. Every
-// publishDir below assumes neither, joining with its own "/" -- normalize once here so
-// "${params.outdir}/${sample_id}" never produces a doubled slash regardless of which
-// outdir value is in play.
+// outdir is now Cirro's documented "$.dataset.dataPath" field (process-input.json),
+// which doesn't carry a trailing slash -- but this pipeline's own samplesheet.csv
+// content below (not publishDir, which Nextflow resolves through its own Path
+// handling and normalizes correctly regardless) builds each file's path via plain
+// string interpolation: "${params.outdir}/${sample_id}/...". That CSV becomes this
+// pipeline's published per-sample manifest, and Cirro's own dataset ingestion reads
+// it back as the catalog for every file in the resulting dataset -- so a stray
+// trailing slash on outdir here doesn't just look wrong, it writes a literal
+// doubled-slash path into every downstream consumer's view of these files, even
+// though the actual published BAM/BAI objects are unaffected. Confirmed via a real
+// Cirro dataset (921b51a4-db90-42f3-a823-2b84b3658760): the real S3 object existed
+// at a clean single-slash key, but the previous "$.params.dataset.s3|/data/" outdir
+// (trailing slash) had propagated a doubled slash into every downstream reference to
+// it. Normalize unconditionally -- belt-and-suspenders against outdir ever regaining
+// a trailing slash, from any source.
 params.outdir = params.outdir.replaceAll('/+$', '')
 
 // ---------------------------------------------------------------------------
